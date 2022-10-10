@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32825.248
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "listrr.pro.Sonarr", "listrr.pro.Sonarr\listrr.pro.Sonarr.csproj", "{FCAF07FF-16DF-41F9-9AD0-C979FC7E2C1B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "listrr.pro.Sonarr.Contracts", "listrr.pro.Sonarr.Contracts\listrr.pro.Sonarr.Contracts.csproj", "{B58F9EA9-7C66-467A-961D-2778CA69DB31}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FCAF07FF-16DF-41F9-9AD0-C979FC7E2C1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FCAF07FF-16DF-41F9-9AD0-C979FC7E2C1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FCAF07FF-16DF-41F9-9AD0-C979FC7E2C1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FCAF07FF-16DF-41F9-9AD0-C979FC7E2C1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B58F9EA9-7C66-467A-961D-2778CA69DB31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B58F9EA9-7C66-467A-961D-2778CA69DB31}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B58F9EA9-7C66-467A-961D-2778CA69DB31}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B58F9EA9-7C66-467A-961D-2778CA69DB31}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FAD60022-0570-4CCF-8252-A2ACA99EAFE2}
+	EndGlobalSection
+EndGlobal
