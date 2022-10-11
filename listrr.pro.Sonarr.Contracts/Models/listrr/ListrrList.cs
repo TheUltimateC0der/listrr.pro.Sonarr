@@ -4,8 +4,8 @@
     {
         public string Id { get; set; }
 
-        public int QualityProfileId { get; set; }
+        public string Name { get; set; }
 
-        public int RootFolderId { get; set; }
+        public string Description { get; set; }
     }
 }

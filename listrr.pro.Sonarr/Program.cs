@@ -1,19 +1,26 @@
 ﻿using CommandLine;
 
+using listrr.pro.Sonarr.Contracts.Models;
 using listrr.pro.Sonarr.Contracts.Models.listrr;
 using listrr.pro.Sonarr.Contracts.Models.Starr;
+using listrr.pro.Sonarr.Contracts.Models.Starr.Sonarr;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
-using SonarrSharp;
+using Spectre.Console;
+
+using System.Text;
 
 namespace listrr.pro.Sonarr
 {
     internal class Program
     {
-        private static ListrrAutoImportSettings listrrAutoImportSettings;
-        private static SonarrInstance sonarrInstance;
-        private static IList<ListrrList> listrrLists;
+        private static ListrrAutoImportSettings listrrAutoImportSettings = new();
+        private static List<ListrrListImportSettings> listrrListImportSettings = new List<ListrrListImportSettings>();
+        private static SonarrInstance sonarrInstance = new();
+
+        private static bool loop = true;
 
         static async Task Main(string[] args)
         {
@@ -26,28 +33,225 @@ namespace listrr.pro.Sonarr
 
             ConfigurationBinder.Bind(configuration.GetSection("SonarrInstance"), sonarrInstance);
             ConfigurationBinder.Bind(configuration.GetSection("listrr").GetSection("AutoImport"), listrrAutoImportSettings);
-            ConfigurationBinder.Bind(configuration.GetSection("listrr").GetSection("Lists"), listrrLists);
+            ConfigurationBinder.Bind(configuration.GetSection("listrr").GetSection("Lists"), listrrListImportSettings);
 
+            //ShowStats(new Stats() { Added = 10, Failed = 0, Existing = 10, Shows = 20 }, "Penis");
 
             await Parser.Default.ParseArguments<Options>(args).WithParsedAsync(RunOptions);
         }
 
         static async Task RunOptions(Options opts)
         {
-            while (true)
+            opts.Verbose = false;
+            Console.OutputEncoding = Encoding.UTF8;
+            Console.InputEncoding = Encoding.UTF8;
+
+            while (loop)
             {
-                var sonarrClient = new SonarrClient(sonarrInstance.Host, sonarrInstance.Port, sonarrInstance.ApiKey);
+                var overallStats = new Stats();
 
-                var foundSeries = await sonarrClient.SeriesLookup.SearchForSeries(399959);
+                Log(LogLevel.None, $"Connecting to Sonarr: {sonarrInstance.Url} with API Key: '{sonarrInstance.ApiKey}'");
+
+                var sonarrClient = new SonarrClient(sonarrInstance.Url, sonarrInstance.ApiKey);
+                var listrrClient = new ListrrClient("https://v2.listrr.pro", listrrAutoImportSettings.ApiKey);
+
+                var qualityProfiles = await sonarrClient.GetQualityProfiles();
+                foreach (var qualityProfile in qualityProfiles)
+                {
+                    Log(LogLevel.Information, $"Found QualityProfile {qualityProfile.Id}:{qualityProfile.Name}");
+                }
+
+                var rootFolders = await sonarrClient.GetRootFolders();
+                foreach (var rootFolder in rootFolders)
+                {
+                    Log(LogLevel.Information, $"Found RootFolder {rootFolder.Id}:{rootFolder.Path}");
+                }
+
+                var languageProfiles = await sonarrClient.GetLanguageProfiles();
+                foreach (var languageProfile in languageProfiles)
+                {
+                    Log(LogLevel.Information, $"Found LanguageProfile {languageProfile.Id}:{languageProfile.Name}");
+                }
+
+                Log(LogLevel.None, $"Getting existing series from Sonarr...");
+                var existingSeries = await sonarrClient.GetSeries();
+                Log(LogLevel.None, $"Got existing series from Sonarr!");
+
+                await AnsiConsole.Status()
+                    .Spinner(Spinner.Known.Dots)
+                    .StartAsync("Adding lists to Sonarr instance!", async ctx =>
+                    {
+                        ctx.Status($"--- AUTO IMPORT MODE ---");
+                        await Task.Delay(5000);
+
+                        ctx.Status($"Getting lists from listrr.pro account...");
+
+                        var listIds = await listrrClient.GetLists();
+                        Log(LogLevel.None, $"Got all lists from listrr.pro account!");
+
+                        foreach (var listId in listIds)
+                        {
+                            var listrrListContent = await listrrClient.GetList(listId.Id);
+
+                            ctx.Status($"Working on listrr list: {listId.Name}");
+
+                            var stats = await ProcessList(opts, ctx, sonarrClient, listrrListContent, existingSeries, rootFolders.First(x => x.Id == listrrAutoImportSettings.RootFolderId).Path, listId.Name);
+
+                            ShowStats(stats, listId.Name);
+
+                            overallStats.Failed += stats.Failed;
+                            overallStats.Added += stats.Added;
+                            overallStats.Existing += stats.Existing;
+                            overallStats.Shows += stats.Shows;
+                        }
+
+                        ctx.Status($"--- LISTS MODE ---");
+                        await Task.Delay(5000);
+
+                        foreach (var listrrListImportSetting in listrrListImportSettings)
+                        {
+                            ctx.Status($"Getting list content for: {listrrListImportSetting.Id}");
+
+                            var listrrListContent = await listrrClient.GetList(listrrListImportSetting.Id);
+
+                            var stats = await ProcessList(opts, ctx, sonarrClient, listrrListContent, existingSeries, rootFolders.First(x => x.Id == listrrListImportSetting.RootFolderId).Path, listrrListImportSetting.Id);
+
+                            ShowStats(stats, listrrListImportSetting.Id);
+
+                            overallStats.Failed += stats.Failed;
+                            overallStats.Added += stats.Added;
+                            overallStats.Existing += stats.Existing;
+                            overallStats.Shows += stats.Shows;
+                        }
+                    });
 
 
-                await Task.Delay(10800000);
+                if (loop)
+                {
+                    ShowStats(overallStats, "Overall");
+
+                    await AnsiConsole.Status()
+                        .Spinner(Spinner.Known.Dots)
+                        .StartAsync("Sleeping 3h until proceeding!", async ctx =>
+                        {
+                            await Task.Delay(10800000);
+                        });
+                }
             }
         }
 
-        static void HandleParseError(IEnumerable<Error> errs)
+        private static async Task<Stats> ProcessList(Options opts, StatusContext ctx, SonarrClient sonarrClient, IList<ListrrListContent> listrrListContent, IList<GetSeriesRequest> existingSeries, string rootFolderPath, string listNameOrId)
         {
-            //handle errors
+            var stats = new Stats();
+
+            foreach (var listContent in listrrListContent)
+            {
+                stats.Shows++;
+
+                if (existingSeries.Any(x => x.TvdbId == listContent.TvdbId))
+                {
+                    if (opts.Verbose)
+                        Log(LogLevel.Debug, $"Show with TVDB ID '{listContent.TvdbId}' already exists. Skipping ...");
+
+                    stats.Existing++;
+
+                    continue;
+                }
+
+                if (opts.Verbose)
+                    Log(LogLevel.Debug, $"Asking Sonarr for TVDB ID '{listContent.TvdbId}' ...");
+
+                var results = await sonarrClient.SeriesLookup($"tvdb:{listContent.TvdbId}");
+                if (results.Count >= 1)
+                {
+                    if (opts.Verbose)
+                        Log(LogLevel.Debug, $"Adding TVDB ID '{listContent.TvdbId}' ...");
+
+                    ctx.Status($"Adding from '{listNameOrId}' to Sonarr - '{listContent.TvdbId}' - '{results.First().Title}'");
+
+                    try
+                    {
+                        var addTitle = $"{results.First().Title} ({results.First().Year})";
+
+                        await sonarrClient.AddSeries(new AddSeriesRequest()
+                        {
+                            LanguageProfileId = listrrAutoImportSettings.LanguageProfileId,
+                            QualityProfileId = listrrAutoImportSettings.QualityProfileId,
+                            RootFolderPath = rootFolderPath,
+                            Title = addTitle,
+                            TvdbId = listContent.TvdbId,
+                            Monitored = true,
+                            AddOptions = new AddSeriesRequestOptions()
+                        });
+
+                        stats.Added++;
+                    }
+                    catch (HttpRequestException e)
+                    {
+                        stats.Failed++;
+
+                        Log(LogLevel.Error, $"Sonarr responded with ErrorCode: {e.StatusCode}. TVDB ID: '{listContent.TvdbId}' Name: '{results.First().Title}'");
+                    }
+
+                    if (opts.Verbose)
+                        Log(LogLevel.Debug, $"Added TVDB ID '{listContent.TvdbId}' to Sonarr ...");
+                }
+                else
+                {
+                    stats.Failed++;
+
+                    if (opts.Verbose)
+                        Log(LogLevel.Debug, $"Sonarr returned nothing for TVDB ID '{listContent.TvdbId}'");
+                }
+            }
+
+            return stats;
+        }
+
+        private static void ShowStats(Stats statistic, string listNameOrId)
+        {
+            AnsiConsole.Write(
+                new Panel(new Text($"Shows: {statistic.Shows}\r\nAdded: {statistic.Added}\r\nExisting: {statistic.Existing}\r\nFailed: {statistic.Failed}"))
+                    .RoundedBorder()
+                    .Header($"  [green]{listNameOrId} stats[/]  ")
+                    .HeaderAlignment(Justify.Center));
+        }
+
+        private static void Log(LogLevel logLevel, string text)
+        {
+            switch (logLevel)
+            {
+                case LogLevel.Trace:
+                    AnsiConsole.MarkupLine($"[purple4]TRC:[/] [silver]{text}[/]");
+
+                    break;
+                case LogLevel.Debug:
+                    AnsiConsole.MarkupLine($"[darkblue]DBG:[/] [silver]{text}[/]");
+
+                    break;
+                case LogLevel.Information:
+                    AnsiConsole.MarkupLine($"[dodgerblue2]INFO:[/] [silver]{text}[/]");
+
+                    break;
+                case LogLevel.Warning:
+                    AnsiConsole.MarkupLine($"[red]WARN:[/] [yellow]{text}[/]");
+
+                    break;
+                case LogLevel.Error:
+                    AnsiConsole.MarkupLine($"[red]ERR:[/] [yellow]{text}[/]");
+
+                    break;
+                case LogLevel.Critical:
+                    AnsiConsole.MarkupLine($"[yellow]CRIT:[/] [red]{text}[/]");
+
+                    break;
+                case LogLevel.None:
+                    AnsiConsole.MarkupLine($"[gray]LOG:[/] [silver]{text}[/]");
+
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(logLevel), logLevel, null);
+            }
         }
     }
 }
