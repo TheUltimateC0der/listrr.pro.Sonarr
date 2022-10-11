@@ -16,7 +16,7 @@ namespace listrr.pro.Sonarr
 {
     internal class Program
     {
-        private static ListrrAutoImportSettings listrrAutoImportSettings = new();
+        private static ListrrAutoImportSettings autoImportSettings = new();
         private static List<ListrrListImportSettings> listrrListImportSettings = new List<ListrrListImportSettings>();
         private static SonarrInstance sonarrInstance = new();
 
@@ -32,10 +32,12 @@ namespace listrr.pro.Sonarr
             var configuration = builder.Build();
 
             ConfigurationBinder.Bind(configuration.GetSection("SonarrInstance"), sonarrInstance);
-            ConfigurationBinder.Bind(configuration.GetSection("listrr").GetSection("AutoImport"), listrrAutoImportSettings);
+            ConfigurationBinder.Bind(configuration.GetSection("listrr").GetSection("AutoImport"), autoImportSettings);
             ConfigurationBinder.Bind(configuration.GetSection("listrr").GetSection("Lists"), listrrListImportSettings);
 
-            //ShowStats(new Stats() { Added = 10, Failed = 0, Existing = 10, Shows = 20 }, "Penis");
+            var sonarrValidated = await ValidateSonarrInstance();
+            if (!sonarrValidated)
+                return;
 
             await Parser.Default.ParseArguments<Options>(args).WithParsedAsync(RunOptions);
         }
@@ -53,7 +55,7 @@ namespace listrr.pro.Sonarr
                 Log(LogLevel.None, $"Connecting to Sonarr: {sonarrInstance.Url} with API Key: '{sonarrInstance.ApiKey}'");
 
                 var sonarrClient = new SonarrClient(sonarrInstance.Url, sonarrInstance.ApiKey);
-                var listrrClient = new ListrrClient("https://v2.listrr.pro", listrrAutoImportSettings.ApiKey);
+                var listrrClient = new ListrrClient("https://v2.listrr.pro", autoImportSettings.ApiKey);
 
                 var qualityProfiles = await sonarrClient.GetQualityProfiles();
                 foreach (var qualityProfile in qualityProfiles)
@@ -72,6 +74,13 @@ namespace listrr.pro.Sonarr
                 {
                     Log(LogLevel.Information, $"Found LanguageProfile {languageProfile.Id}:{languageProfile.Name}");
                 }
+
+                if (listrrListImportSettings.Count == 0 || (autoImportSettings.LanguageProfileId == 0 || autoImportSettings.QualityProfileId == 0 || autoImportSettings.RootFolderId == 0))
+                {
+                    Log(LogLevel.Information, $"Please use the provided information above to set your settings according to the documentation!");
+                    return;
+                }
+
 
                 Log(LogLevel.None, $"Getting existing series from Sonarr...");
                 var existingSeries = await sonarrClient.GetSeries();
@@ -95,7 +104,7 @@ namespace listrr.pro.Sonarr
 
                             ctx.Status($"Working on listrr list: {listId.Name}");
 
-                            var stats = await ProcessList(opts, ctx, sonarrClient, listrrListContent, existingSeries, rootFolders.First(x => x.Id == listrrAutoImportSettings.RootFolderId).Path, listId.Name);
+                            var stats = await ProcessList(opts, ctx, sonarrClient, listrrListContent, existingSeries, rootFolders.First(x => x.Id == autoImportSettings.RootFolderId).Path, listId.Name);
 
                             ShowStats(stats, listId.Name);
 
@@ -108,15 +117,15 @@ namespace listrr.pro.Sonarr
                         ctx.Status($"--- LISTS MODE ---");
                         await Task.Delay(5000);
 
-                        foreach (var listrrListImportSetting in listrrListImportSettings)
+                        foreach (var listImportSetting in listrrListImportSettings)
                         {
-                            ctx.Status($"Getting list content for: {listrrListImportSetting.Id}");
+                            ctx.Status($"Getting list content for: {listImportSetting.Id}");
 
-                            var listrrListContent = await listrrClient.GetList(listrrListImportSetting.Id);
+                            var listrrListContent = await listrrClient.GetList(listImportSetting.Id);
 
-                            var stats = await ProcessList(opts, ctx, sonarrClient, listrrListContent, existingSeries, rootFolders.First(x => x.Id == listrrListImportSetting.RootFolderId).Path, listrrListImportSetting.Id);
+                            var stats = await ProcessList(opts, ctx, sonarrClient, listrrListContent, existingSeries, rootFolders.First(x => x.Id == listImportSetting.RootFolderId).Path, listImportSetting.Id, listImportSetting);
 
-                            ShowStats(stats, listrrListImportSetting.Id);
+                            ShowStats(stats, listImportSetting.Id);
 
                             overallStats.Failed += stats.Failed;
                             overallStats.Added += stats.Added;
@@ -140,7 +149,7 @@ namespace listrr.pro.Sonarr
             }
         }
 
-        private static async Task<Stats> ProcessList(Options opts, StatusContext ctx, SonarrClient sonarrClient, IList<ListrrListContent> listrrListContent, IList<GetSeriesRequest> existingSeries, string rootFolderPath, string listNameOrId)
+        private static async Task<Stats> ProcessList(Options opts, StatusContext ctx, SonarrClient sonarrClient, IList<ListrrListContent> listrrListContent, IList<GetSeriesRequest> existingSeries, string rootFolderPath, string listNameOrId, ListrrListImportSettings importSettings = null)
         {
             var stats = new Stats();
 
@@ -173,16 +182,41 @@ namespace listrr.pro.Sonarr
                     {
                         var addTitle = $"{results.First().Title} ({results.First().Year})";
 
-                        await sonarrClient.AddSeries(new AddSeriesRequest()
+                        if (importSettings == null)
                         {
-                            LanguageProfileId = listrrAutoImportSettings.LanguageProfileId,
-                            QualityProfileId = listrrAutoImportSettings.QualityProfileId,
-                            RootFolderPath = rootFolderPath,
-                            Title = addTitle,
-                            TvdbId = listContent.TvdbId,
-                            Monitored = true,
-                            AddOptions = new AddSeriesRequestOptions()
-                        });
+                            await sonarrClient.AddSeries(new AddSeriesRequest()
+                            {
+                                LanguageProfileId = autoImportSettings.LanguageProfileId,
+                                QualityProfileId = autoImportSettings.QualityProfileId,
+                                RootFolderPath = rootFolderPath,
+                                Title = addTitle,
+                                TvdbId = listContent.TvdbId,
+                                Monitored = autoImportSettings.Monitored,
+                                AddOptions = new AddSeriesRequestOptions()
+                                {
+                                    SearchForCutoffUnmetEpisodes = autoImportSettings.SearchForCutoffUnmetEpisodes,
+                                    SearchForMissingEpisodes = autoImportSettings.SearchForMissingEpisodes
+                                }
+                            });
+                        }
+                        else
+                        {
+                            await sonarrClient.AddSeries(new AddSeriesRequest()
+                            {
+                                LanguageProfileId = importSettings.LanguageProfileId,
+                                QualityProfileId = importSettings.QualityProfileId,
+                                RootFolderPath = rootFolderPath,
+                                Title = addTitle,
+                                TvdbId = listContent.TvdbId,
+                                Monitored = importSettings.Monitored,
+                                AddOptions = new AddSeriesRequestOptions()
+                                {
+                                    SearchForCutoffUnmetEpisodes = importSettings.SearchForCutoffUnmetEpisodes,
+                                    SearchForMissingEpisodes = importSettings.SearchForMissingEpisodes
+                                }
+                            });
+                        }
+
 
                         stats.Added++;
                     }
@@ -215,6 +249,30 @@ namespace listrr.pro.Sonarr
                     .RoundedBorder()
                     .Header($"  [green]{listNameOrId} stats[/]  ")
                     .HeaderAlignment(Justify.Center));
+        }
+
+        private static async Task<bool> ValidateSonarrInstance()
+        {
+            if (sonarrInstance == null)
+            {
+                Log(LogLevel.Error, "Please set the information for your Sonarr instance.");
+                return false;
+            }
+            if (string.IsNullOrEmpty(sonarrInstance.Url))
+            {
+                Log(LogLevel.Error, "Please set the Url of your Sonarr instance.");
+                return false;
+            }
+            if (string.IsNullOrEmpty(sonarrInstance.ApiKey))
+            {
+                Log(LogLevel.Error, "Please set the ApiKey of your Sonarr instance.");
+                return false;
+            }
+
+            var client = new SonarrClient(sonarrInstance.Url, sonarrInstance.ApiKey);
+            await client.SeriesLookup($"tvdb:71663");
+
+            return true;
         }
 
         private static void Log(LogLevel logLevel, string text)

@@ -60,10 +60,10 @@ namespace listrr.pro.Sonarr.Contracts.Models.Starr.Sonarr
         public string Monitor => "all";
 
         [JsonPropertyName("searchForMissingEpisodes")]
-        public bool SearchForMissingEpisodes => true;
+        public bool SearchForMissingEpisodes { get; set; }
 
         [JsonPropertyName("searchForCutoffUnmetEpisodes")]
-        public bool SearchForCutoffUnmetEpisodes => true;
+        public bool SearchForCutoffUnmetEpisodes { get; set; }
     }
 
 
