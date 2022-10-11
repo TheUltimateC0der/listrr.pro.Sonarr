@@ -20,7 +20,7 @@ You can add a list by its Id. You can also set the Quality Profile, Root Folder,
 version: "3.9"
    
 services:
-  db:
+  sonarrbridge:
     image: ghcr.io/theultimatec0der/listrr.pro.sonarr:latest
     environment:
       # This is your Sonarr instance setting
