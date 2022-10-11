@@ -1,3 +1,7 @@
+LABEL org.opencontainers.image.source=https://github.com/TheUltimateC0der/listrr.pro.Sonarr
+LABEL org.opencontainers.image.description="listrr.pro to Sonarr bridge. This enables you to import your listrr.pro lists to your sonarr instances."
+LABEL org.opencontainers.image.licenses=AGPL3
+
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build-env
 WORKDIR /app
 
