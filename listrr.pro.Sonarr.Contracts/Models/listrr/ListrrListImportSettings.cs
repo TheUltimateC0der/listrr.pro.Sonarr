@@ -9,5 +9,11 @@
         public int LanguageProfileId { get; set; }
 
         public int RootFolderId { get; set; }
+
+        public bool Monitored { get; set; }
+
+        public bool SearchForMissingEpisodes { get; set; }
+
+        public bool SearchForCutoffUnmetEpisodes { get; set; }
     }
 }
