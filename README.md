@@ -14,6 +14,16 @@ You can add a list by its Id. You can also set the Quality Profile, Root Folder,
 
 
 # Examples
+Please be sure to only use the `SonarrInstance` settings for the first run. For the first run, you have to get your `LanguageProfiles`, `RootFolders` and `QualityProfiles`. When you set the Url and APIKey of your instance, start the container, and it will show you an output something like this:
+
+```
+LOG: Connecting to Sonarr: https://sonarr.mydomain.tld with API Key: 'MY-SONARR-API-KEY'
+INFO: Found QualityProfile 1:1080p
+INFO: Found RootFolder 5:/mnt/unionfs/Media/TV
+INFO: Found LanguageProfile 1:English
+```
+
+You can now use this information to set the Ids for your imports.
 
 ## docker-compose
 ``` yaml
