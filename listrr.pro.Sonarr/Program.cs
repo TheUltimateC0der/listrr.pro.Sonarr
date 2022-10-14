@@ -75,9 +75,15 @@ namespace listrr.pro.Sonarr
                     Log(LogLevel.Information, $"Found LanguageProfile {languageProfile.Id}:{languageProfile.Name}");
                 }
 
-                if (listrrListImportSettings.Count == 0 || (autoImportSettings.LanguageProfileId == 0 || autoImportSettings.QualityProfileId == 0 || autoImportSettings.RootFolderId == 0))
+                if (autoImportSettings.LanguageProfileId == 0 || autoImportSettings.QualityProfileId == 0 || autoImportSettings.RootFolderId == 0)
                 {
                     Log(LogLevel.Information, $"Please use the provided information above to set your settings according to the documentation!");
+                    return;
+                }
+
+                if (!autoImportSettings.ImportLists && !listrrListImportSettings.Any())
+                {
+                    Log(LogLevel.Critical, $"There is nothing I can import. There are no manual lists, and AutoImport is disabled.");
                     return;
                 }
 
@@ -119,6 +125,12 @@ namespace listrr.pro.Sonarr
 
                         ctx.Status($"--- LISTS MODE ---");
                         await Task.Delay(5000);
+
+                        if (!listrrListImportSettings.Any())
+                        {
+                            ctx.Status($"No lists to import.");
+                            await Task.Delay(5000);
+                        }
 
                         foreach (var listImportSetting in listrrListImportSettings)
                         {
