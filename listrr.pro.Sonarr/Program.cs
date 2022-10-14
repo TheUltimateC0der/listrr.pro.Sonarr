@@ -90,28 +90,31 @@ namespace listrr.pro.Sonarr
                     .Spinner(Spinner.Known.Dots)
                     .StartAsync("Adding lists to Sonarr instance!", async ctx =>
                     {
-                        ctx.Status($"--- AUTO IMPORT MODE ---");
-                        await Task.Delay(5000);
-
-                        ctx.Status($"Getting lists from listrr.pro account...");
-
-                        var listIds = await listrrClient.GetLists();
-                        Log(LogLevel.None, $"Got all lists from listrr.pro account!");
-
-                        foreach (var listId in listIds)
+                        if (autoImportSettings.ImportLists)
                         {
-                            var listrrListContent = await listrrClient.GetList(listId.Id);
+                            ctx.Status($"--- AUTO IMPORT MODE ---");
+                            await Task.Delay(5000);
 
-                            ctx.Status($"Working on listrr list: {listId.Name}");
+                            ctx.Status($"Getting lists from listrr.pro account...");
 
-                            var stats = await ProcessList(opts, ctx, sonarrClient, listrrListContent, existingSeries, rootFolders.First(x => x.Id == autoImportSettings.RootFolderId).Path, listId.Name);
+                            var listIds = await listrrClient.GetLists();
+                            Log(LogLevel.None, $"Got all lists from listrr.pro account!");
 
-                            ShowStats(stats, listId.Name);
+                            foreach (var listId in listIds)
+                            {
+                                var listrrListContent = await listrrClient.GetList(listId.Id);
 
-                            overallStats.Failed += stats.Failed;
-                            overallStats.Added += stats.Added;
-                            overallStats.Existing += stats.Existing;
-                            overallStats.Shows += stats.Shows;
+                                ctx.Status($"Working on listrr list: {listId.Name}");
+
+                                var stats = await ProcessList(opts, ctx, sonarrClient, listrrListContent, existingSeries, rootFolders.First(x => x.Id == autoImportSettings.RootFolderId).Path, listId.Name);
+
+                                ShowStats(stats, listId.Name);
+
+                                overallStats.Failed += stats.Failed;
+                                overallStats.Added += stats.Added;
+                                overallStats.Existing += stats.Existing;
+                                overallStats.Shows += stats.Shows;
+                            }
                         }
 
                         ctx.Status($"--- LISTS MODE ---");
