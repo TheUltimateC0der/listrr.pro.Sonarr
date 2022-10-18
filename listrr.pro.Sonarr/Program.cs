@@ -196,11 +196,13 @@ namespace listrr.pro.Sonarr
                     if (opts.Verbose)
                         Log(LogLevel.Debug, $"Adding TVDB ID '{listContent.TvdbId}' ...");
 
-                    ctx.Status($"Adding from '{listNameOrId}' to Sonarr - '{listContent.TvdbId}' - '{results.First().Title}'");
+                    var cleanName = results.First().Title.Replace("[", "").Replace("]", "");
+
+                    ctx.Status($"Adding from '{listNameOrId}' to Sonarr - '{listContent.TvdbId}' - '{cleanName}'");
 
                     try
                     {
-                        var addTitle = $"{results.First().Title} ({results.First().Year})";
+                        var addTitle = $"{cleanName} ({results.First().Year})";
 
                         if (importSettings == null)
                         {
@@ -244,7 +246,7 @@ namespace listrr.pro.Sonarr
                     {
                         stats.Failed++;
 
-                        Log(LogLevel.Error, $"Sonarr responded with ErrorCode: {e.StatusCode}. TVDB ID: '{listContent.TvdbId}' Name: '{results.First().Title}'");
+                        Log(LogLevel.Error, $"Sonarr responded with ErrorCode: {e.StatusCode}. TVDB ID: '{listContent.TvdbId}' Name: '{cleanName}'");
                     }
 
                     if (opts.Verbose)
