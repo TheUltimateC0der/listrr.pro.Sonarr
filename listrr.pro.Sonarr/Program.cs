@@ -55,7 +55,7 @@ namespace listrr.pro.Sonarr
                 Log(LogLevel.None, $"Connecting to Sonarr: {sonarrInstance.Url} with API Key: '{sonarrInstance.ApiKey}'");
 
                 var sonarrClient = new SonarrClient(sonarrInstance.Url, sonarrInstance.ApiKey);
-                var listrrClient = new ListrrClient("https://v2.listrr.pro", autoImportSettings.ApiKey);
+                var listrrClient = new ListrrClient("https://listrr.pro", autoImportSettings.ApiKey);
 
                 var qualityProfiles = await sonarrClient.GetQualityProfiles();
                 foreach (var qualityProfile in qualityProfiles)
@@ -75,17 +75,22 @@ namespace listrr.pro.Sonarr
                     Log(LogLevel.Information, $"Found LanguageProfile {languageProfile.Id}:{languageProfile.Name}");
                 }
 
-                if (autoImportSettings.LanguageProfileId == 0 || autoImportSettings.QualityProfileId == 0 || autoImportSettings.RootFolderId == 0)
-                {
-                    Log(LogLevel.Information, $"Please use the provided information above to set your settings according to the documentation!");
-                    return;
-                }
+                Log(LogLevel.Information, $"Please use the provided information above to set your settings according to the documentation!");
 
                 if (!autoImportSettings.ImportLists && !listrrListImportSettings.Any())
                 {
                     Log(LogLevel.Critical, $"There is nothing I can import. There are no manual lists, and AutoImport is disabled.");
                     return;
                 }
+
+                if (autoImportSettings.ImportLists && (autoImportSettings.LanguageProfileId == 0 || autoImportSettings.QualityProfileId == 0 || autoImportSettings.RootFolderId == 0))
+                    Log(LogLevel.Information, $"Skipping AutoImport. It is either set to false, or some of the Ids you need to set are set to 0 or not set at all.");
+
+                if (!listrrListImportSettings.Any())
+                    Log(LogLevel.Information, $"Skipping manual mode. There are no lists present.");
+
+
+
 
 
                 Log(LogLevel.None, $"Getting existing series from Sonarr...");
