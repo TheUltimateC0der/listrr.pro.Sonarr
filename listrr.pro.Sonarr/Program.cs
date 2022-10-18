@@ -97,6 +97,7 @@ namespace listrr.pro.Sonarr
                 var existingSeries = await sonarrClient.GetSeries();
                 Log(LogLevel.None, $"Got existing series from Sonarr!");
 
+                var immediateExit = false;
                 await AnsiConsole.Status()
                     .Spinner(Spinner.Known.Dots)
                     .StartAsync("Adding lists to Sonarr instance!", async ctx =>
@@ -113,19 +114,37 @@ namespace listrr.pro.Sonarr
 
                             foreach (var listId in listIds)
                             {
+                                if (immediateExit)
+                                    break;
+
                                 var listrrListContent = await listrrClient.GetList(listId.Id);
 
                                 ctx.Status($"Working on listrr list: {listId.Name}");
 
-                                var stats = await ProcessList(opts, ctx, sonarrClient, listrrListContent, existingSeries, rootFolders.First(x => x.Id == autoImportSettings.RootFolderId).Path, listId.Name);
+                                try
+                                {
+                                    var stats = await ProcessList(opts, ctx, sonarrClient, listrrListContent, existingSeries, rootFolders.First(x => x.Id == autoImportSettings.RootFolderId).Path, listId.Name);
 
-                                ShowStats(stats, listId.Name);
+                                    ShowStats(stats, listId.Name);
 
-                                overallStats.Failed += stats.Failed;
-                                overallStats.Added += stats.Added;
-                                overallStats.Existing += stats.Existing;
-                                overallStats.Shows += stats.Shows;
+                                    overallStats.Failed += stats.Failed;
+                                    overallStats.Added += stats.Added;
+                                    overallStats.Existing += stats.Existing;
+                                    overallStats.Shows += stats.Shows;
+                                }
+                                catch (TimeoutException e)
+                                {
+                                    immediateExit = true;
+                                    Log(LogLevel.Debug, $"We got a timeout while adding a show to Sonarr. Sonarr seems to be overloaded with requests. We skip for now, and try later.");
+                                }
                             }
+                        }
+
+                        if (immediateExit)
+                        {
+                            Log(LogLevel.Warning, $"Skipping 'LISTS MODE' because of previous timeout");
+
+                            return;
                         }
 
                         ctx.Status($"--- LISTS MODE ---");
@@ -139,18 +158,29 @@ namespace listrr.pro.Sonarr
 
                         foreach (var listImportSetting in listrrListImportSettings)
                         {
+                            if (immediateExit)
+                                break;
+
                             ctx.Status($"Getting list content for: {listImportSetting.Id}");
 
                             var listrrListContent = await listrrClient.GetList(listImportSetting.Id);
 
-                            var stats = await ProcessList(opts, ctx, sonarrClient, listrrListContent, existingSeries, rootFolders.First(x => x.Id == listImportSetting.RootFolderId).Path, listImportSetting.Id, listImportSetting);
+                            try
+                            {
+                                var stats = await ProcessList(opts, ctx, sonarrClient, listrrListContent, existingSeries, rootFolders.First(x => x.Id == listImportSetting.RootFolderId).Path, listImportSetting.Id, listImportSetting);
 
-                            ShowStats(stats, listImportSetting.Id);
+                                ShowStats(stats, listImportSetting.Id);
 
-                            overallStats.Failed += stats.Failed;
-                            overallStats.Added += stats.Added;
-                            overallStats.Existing += stats.Existing;
-                            overallStats.Shows += stats.Shows;
+                                overallStats.Failed += stats.Failed;
+                                overallStats.Added += stats.Added;
+                                overallStats.Existing += stats.Existing;
+                                overallStats.Shows += stats.Shows;
+                            }
+                            catch (TimeoutException e)
+                            {
+                                immediateExit = true;
+                                Log(LogLevel.Debug, $"We got a timeout while adding a show to Sonarr. Sonarr seems to be overloaded with requests. We skip for now, and try later.");
+                            }
                         }
                     });
 
@@ -198,7 +228,7 @@ namespace listrr.pro.Sonarr
 
                     var cleanName = results.First().Title.Replace("[", "").Replace("]", "");
 
-                    ctx.Status($"Adding from '{listNameOrId}' to Sonarr - '{listContent.TvdbId}' - '{cleanName}'");
+                    Log(LogLevel.Information, $"Adding from '{listNameOrId}' to Sonarr - '{listContent.TvdbId}' - '{cleanName}'");
 
                     try
                     {
@@ -259,6 +289,9 @@ namespace listrr.pro.Sonarr
                     if (opts.Verbose)
                         Log(LogLevel.Debug, $"Sonarr returned nothing for TVDB ID '{listContent.TvdbId}'");
                 }
+
+                ctx.Status("Waiting 3s before adding the next show...");
+                await Task.Delay(3000);
             }
 
             return stats;
