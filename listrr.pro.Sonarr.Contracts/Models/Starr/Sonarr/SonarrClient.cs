@@ -49,6 +49,8 @@ namespace listrr.pro.Sonarr.Contracts.Models.Starr.Sonarr
 
         public int LanguageProfileId { get; set; }
 
+        public bool SeasonFolder { get; set; }
+
         public string RootFolderPath { get; set; }
 
         public AddSeriesRequestOptions AddOptions { get; set; }

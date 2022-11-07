@@ -12,6 +12,8 @@
 
         public bool Monitored { get; set; }
 
+        public bool SeasonFolder { get; set; }
+
         public bool SearchForMissingEpisodes { get; set; }
 
         public bool SearchForCutoffUnmetEpisodes { get; set; }
