@@ -12,6 +12,8 @@
 
         public bool Monitored { get; set; }
 
+        public IList<int> Tags { get; set; }
+
         public bool SeasonFolder { get; set; }
 
         public bool SearchForMissingEpisodes { get; set; }

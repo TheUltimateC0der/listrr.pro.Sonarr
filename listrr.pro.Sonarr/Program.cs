@@ -75,6 +75,12 @@ namespace listrr.pro.Sonarr
                     Log(LogLevel.Information, $"Found LanguageProfile {languageProfile.Id}:{languageProfile.Name}");
                 }
 
+                var tags = await sonarrClient.GetTags();
+                foreach (var tag in tags)
+                {
+                    Log(LogLevel.Information, $"Found Tag {tag.Id}:{tag.Label}");
+                }
+
                 Log(LogLevel.Information, $"Please use the provided information above to set your settings according to the documentation!");
 
                 if (!autoImportSettings.ImportLists && !listrrListImportSettings.Any())
@@ -245,6 +251,7 @@ namespace listrr.pro.Sonarr
                                 TvdbId = listContent.TvdbId,
                                 Monitored = autoImportSettings.Monitored,
                                 SeasonFolder = importSettings.SeasonFolder,
+                                Tags = importSettings.Tags,
                                 AddOptions = new AddSeriesRequestOptions()
                                 {
                                     SearchForCutoffUnmetEpisodes = autoImportSettings.SearchForCutoffUnmetEpisodes,
@@ -263,6 +270,7 @@ namespace listrr.pro.Sonarr
                                 TvdbId = listContent.TvdbId,
                                 Monitored = importSettings.Monitored,
                                 SeasonFolder = importSettings.SeasonFolder,
+                                Tags = importSettings.Tags,
                                 AddOptions = new AddSeriesRequestOptions()
                                 {
                                     SearchForCutoffUnmetEpisodes = importSettings.SearchForCutoffUnmetEpisodes,

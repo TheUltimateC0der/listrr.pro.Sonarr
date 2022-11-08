@@ -17,6 +17,8 @@ namespace listrr.pro.Sonarr.Contracts.Models.Starr.Sonarr
 
         public async Task<List<QualityProfile>> GetQualityProfiles() => await _restClient.GetJsonAsync<List<QualityProfile>>("api/v3/qualityprofile");
 
+        public async Task<List<Tag>> GetTags() => await _restClient.GetJsonAsync<List<Tag>>("api/v3/tag/detail");
+
         public async Task<List<RootFolder>> GetRootFolders() => await _restClient.GetJsonAsync<List<RootFolder>>("api/v3/rootfolder");
 
         public async Task<List<LanguageProfile>> GetLanguageProfiles() => await _restClient.GetJsonAsync<List<LanguageProfile>>("api/v3/languageprofile");
@@ -37,6 +39,13 @@ namespace listrr.pro.Sonarr.Contracts.Models.Starr.Sonarr
         public int TvdbId { get; set; }
     }
 
+    public class Tag
+    {
+        public int Id { get; set; }
+
+        public string Label { get; set; }
+    }
+
     public class AddSeriesRequest
     {
         public string Title { get; set; }
@@ -48,6 +57,8 @@ namespace listrr.pro.Sonarr.Contracts.Models.Starr.Sonarr
         public int QualityProfileId { get; set; }
 
         public int LanguageProfileId { get; set; }
+
+        public IList<int> Tags { get; set; }
 
         public bool SeasonFolder { get; set; }
 
