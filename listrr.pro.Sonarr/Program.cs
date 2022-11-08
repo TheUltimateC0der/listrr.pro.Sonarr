@@ -250,8 +250,8 @@ namespace listrr.pro.Sonarr
                                 Title = addTitle,
                                 TvdbId = listContent.TvdbId,
                                 Monitored = autoImportSettings.Monitored,
-                                SeasonFolder = importSettings.SeasonFolder,
-                                Tags = importSettings.Tags,
+                                SeasonFolder = autoImportSettings.SeasonFolder,
+                                Tags = autoImportSettings.Tags,
                                 AddOptions = new AddSeriesRequestOptions()
                                 {
                                     SearchForCutoffUnmetEpisodes = autoImportSettings.SearchForCutoffUnmetEpisodes,
