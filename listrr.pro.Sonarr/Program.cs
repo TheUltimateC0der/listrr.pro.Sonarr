@@ -296,8 +296,7 @@ namespace listrr.pro.Sonarr
                 {
                     stats.Failed++;
 
-                    if (opts.Verbose)
-                        Log(LogLevel.Debug, $"Sonarr returned nothing for TVDB ID '{listContent.TvdbId}'");
+                    Log(LogLevel.Warning, $"Sonarr returned nothing for TVDB ID '{listContent.TvdbId}'. So we cannot add it.");
                 }
 
                 ctx.Status("Waiting 3s before adding the next show...");
