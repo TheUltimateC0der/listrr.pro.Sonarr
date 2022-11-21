@@ -46,6 +46,8 @@ services:
       - listrr__AutoImport__SearchForMissingEpisodes=true
       - listrr__AutoImport__SearchForCutoffUnmetEpisodes=true
       - listrr__AutoImport__SeasonFolder=true
+      - listrr__AutoImport__Tags__0=1
+      - listrr__AutoImport__Tags__1=5
       # This is for importing listrr.pro V2 lists by their Ids
       - listrr__Lists__0__Id=A-LISTRR-V2-LIST-ID
       - listrr__Lists__0__QualityProfileId=1
@@ -55,6 +57,9 @@ services:
       - listrr__Lists__0__SearchForMissingEpisodes=true
       - listrr__Lists__0__SearchForCutoffUnmetEpisodes=true
       - listrr__Lists__0__SeasonFolders=true
+      - listrr__Lists__0__Tags__0=1
+      - listrr__Lists__0__Tags__1=35
+      - listrr__Lists__0__Tags__2=50
       - listrr__Lists__1__Id=A-LISTRR-V2-LIST-ID
       - listrr__Lists__1__QualityProfileId=1
       - listrr__Lists__1__RootFolderId=1
@@ -63,4 +68,7 @@ services:
       - listrr__Lists__1__SearchForMissingEpisodes=true
       - listrr__Lists__1__SearchForCutoffUnmetEpisodes=true
       - listrr__Lists__1__SeasonFolders=true
+      - listrr__Lists__1__Tags__0=1
+      - listrr__Lists__1__Tags__1=3
+      - listrr__Lists__1__Tags__2=7
 ```
